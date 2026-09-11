@@ -32,7 +32,7 @@ role-aware REST API and serves a responsive single-page frontend with
 - **Production posture** — systemd units with hardening, gunicorn workers,
   PBKDF2-hashed credentials, session cookies with `HttpOnly`/`SameSite=Lax`,
   brute-force login throttling, security response headers, and a dedicated
-  non-root runtime user.
+  non-root runtime user. 
 
 ---
 

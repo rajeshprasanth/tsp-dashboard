@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>tsp-dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
+<link rel="icon" href="/images/logo-dark.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,9 +24,9 @@
 <!-- ============================ LOGIN ============================ -->
 <div id="loginWrap" hidden>
   <div class="login-card">
-    <div class="login-brand">
-      <span class="mark">tsp</span>
-      <h1>tsp-dashboard</h1>
+    <div class="login-top">
+      <img class="login-logo" src="/images/logo-dark.svg" alt="tsp-dashboard" />
+      <button id="loginThemeBtn" class="theme-toggle" title="Toggle light/dark mode">☀ Light</button>
     </div>
     <p class="login-sub">Sign in to the queue dashboard. Access is role-based.</p>
     <form id="loginForm">
@@ -47,7 +47,7 @@
 
     <header class="top">
       <div class="brand">
-        <span class="mark">tsp</span>
+        <img class="brand-logo" src="/images/logo-dark.svg" alt="tsp-dashboard" />
         <div>
           <h1>tsp-dashboard</h1>
           <div class="bin" id="binPath">—</div>
@@ -57,7 +57,7 @@
         <span class="chip alive" id="serverChip"><span class="dot"></span><span id="serverChipText">checking…</span></span>
         <span class="chip" title="Slots available"><span class="dot" style="background:var(--ink-faint)"></span>slots&nbsp;<b id="slotsTag" style="color:var(--ink)">—</b></span>
         <span class="chip role-chip viewer" id="roleChip">—</span>
-        <button id="themeBtn" title="Toggle light/dark mode">☀ Light</button>
+        <button id="themeBtn" class="theme-toggle" title="Toggle light/dark mode">☀ Light</button>
         <button id="logoutBtn">Sign out</button>
       </div>
     </header>
@@ -238,8 +238,12 @@ async function api(path, opts = {}) {
 function setTheme(t) {
   document.documentElement.dataset.theme = t;
   localStorage.setItem('tsp-theme', t);
-  const btn = $('#themeBtn');
-  if (btn) btn.textContent = t === 'dark' ? '☀ Light' : '☾ Dark';
+  const label = t === 'dark' ? '☀ Light' : '☾ Dark';
+  document.querySelectorAll('.theme-toggle').forEach((btn) => { btn.textContent = label; });
+  const logo = t === 'dark' ? '/images/logo-dark.svg' : '/images/logo-light.svg';
+  const fav = document.querySelector('link[rel="icon"]');
+  if (fav) fav.href = logo;
+  document.querySelectorAll('.login-logo, .brand-logo').forEach((img) => { img.src = logo; });
 }
 
 function themeInit() {
@@ -764,6 +768,9 @@ function bindEvents() {
   $('#loginForm').addEventListener('submit', doLogin);
   $('#logoutBtn').addEventListener('click', doLogout);
   $('#themeBtn').addEventListener('click', () => {
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
+  $('#loginThemeBtn').addEventListener('click', () => {
     setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
   $('#slotsBtn').addEventListener('click', setSlots);

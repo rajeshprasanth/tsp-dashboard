@@ -237,6 +237,13 @@ def test_login_page_served(client):
     assert b"tsp-dashboard" in res.data
 
 
+def test_logo_asset_served(client):
+    res = client.get("/images/logo-dark.svg")
+    assert res.status_code == 200
+    assert "image/svg+xml" in res.content_type
+    assert b"<svg" in res.data
+
+
 def test_security_headers(client):
     res = client.get("/api/me")
     assert res.headers["X-Content-Type-Options"] == "nosniff"

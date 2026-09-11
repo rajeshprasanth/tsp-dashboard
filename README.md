@@ -1,5 +1,9 @@
 # tsp-dashboard
 
+<p align="center">
+  <img src="images/logo-dark.svg" alt="tsp-dashboard logo" width="420" />
+</p>
+
 A production-grade web dashboard for [Task Spooler](https://viric.name/cgi-bin/ts)
 (`tsp` / `ts`), the Unix task queue. It wraps the `tsp` CLI behind a small,
 role-aware REST API and serves a responsive single-page frontend with
@@ -15,7 +19,7 @@ role-aware REST API and serves a responsive single-page frontend with
   - `admin` — full access: view jobs **and** run every control action. 
   - `viewer` — read-only: list jobs, open job info / output, see server state. Every mutating endpoint returns `403`.
 - **Dashboard** — live-updating job table, state badges, exit codes, drawer with full `tsp -i` info and `tsp -c` output, queue-depth trend chart, slot-usage ring.
-- **Dark & light themes** — manual toggle (persisted) and automatic `prefers-color-scheme` detection.
+- **Dark & light themes** — toggle directly on the **login page** or in the header; your choice is stored in `localStorage` and persists from the login screen into the application (and back again on logout), with automatic `prefers-color-scheme` detection as the default.
 - **Admin server controls** (mapped to `tsp` actions):
 
 | Action                    | `tsp` command            | Notes                                              |
@@ -184,13 +188,16 @@ CLI (selected via `TSP_BIN`), so nothing real is touched.
 ### Layout
 
 ```
+images/
+  logo-dark.svg         # official application logo (dark theme)
+  logo-light.svg        # official application logo (light theme)
 app/
   __init__.py   # Flask app factory, security headers
   config.py     # env-driven configuration
   auth.py       # user store, password hashing, role decorators
   tsp.py        # TaskSpooler client (parsing + tsp commands)
   api.py        # REST API blueprint (role-aware)
-  web.py        # serves the frontend
+  web.py        # serves the frontend and branded assets
 static/index.html
 systemd/
   tsp-dashboard.service   # main dashboard unit

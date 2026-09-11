@@ -148,6 +148,7 @@
         <div class="chip-btn" data-filter="failed">Failed</div>
       </div>
       <div class="toolbar-right">
+        <button class="refresh-btn" id="refreshBtn" title="Refresh now" aria-label="Refresh now"><span>↻</span></button>
         <div class="poll-wrap">
           <label for="pollSel">poll</label>
           <select id="pollSel" title="Auto-refresh interval — applies to your browser session">
@@ -339,6 +340,7 @@ async function fetchJobs() {
       updateStats(data.counts || {});
       recordHistory(data.counts || {});
       markAlive(true, 'server up');
+      renderJobs();
     } else if (res.status === 503) {
       state.jobs = [];
       state.slots = null;
@@ -746,6 +748,17 @@ function syncPollUi() {
   $('#footPoll').textContent = formatPoll(state.pollMs);
 }
 
+async function refreshNow() {
+  const btn = $('#refreshBtn');
+  btn.classList.add('spinning');
+  try {
+    await fetchJobs();
+    toast('Refreshed.', 'ok');
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
 // events
 function bindEvents() {
   $('#loginForm').addEventListener('submit', doLogin);
@@ -776,6 +789,8 @@ function bindEvents() {
   $('#pollSel').addEventListener('change', (e) => {
     applyPoll(parseInt(e.target.value, 10) || 2000);
   });
+
+  $('#refreshBtn').addEventListener('click', () => { refreshNow(); });
 }
 
 (async function init() {

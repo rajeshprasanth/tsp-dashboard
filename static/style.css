@@ -239,6 +239,16 @@ header.top{
 .search-wrap{position:relative;}
   .search-wrap::before{content:"⌕"; position:absolute; left:11px; top:50%; transform:translateY(-52%); color:var(--ink-faint); font-size:14px;}
   .toolbar-right{display:flex; align-items:center; gap:10px;}
+  .refresh-btn{
+    font-family:var(--font-mono); font-size:14px; color:var(--ink-dim);
+    background:var(--panel); border:1px solid var(--grid); border-radius:8px;
+    width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:all .12s;
+  }
+  .refresh-btn:hover{color:var(--ink); border-color:var(--ink-faint);}
+  .refresh-btn:active{transform:scale(.94);}
+  .refresh-btn.spinning span{display:inline-block; animation:refresh-spin .6s linear infinite;}
+  @keyframes refresh-spin{to{transform:rotate(360deg);}}
   .poll-wrap{display:inline-flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim);}
   .poll-wrap label{letter-spacing:.02em;}
   .poll-wrap select{

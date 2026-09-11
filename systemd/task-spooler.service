@@ -1,0 +1,25 @@
+[Unit]
+Description=Task Spooler daemon (tsp server)
+Documentation=man:ts(1)
+ConditionPathExists=/usr/bin/ts
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# The daemon must run as the same user that owns /data so the dashboard
+# and the daemon share the socket (TMPDIR/ts.socket).
+User=tspd
+Group=tspd
+
+Environment=TS_SOCKET=/data/ts.socket
+Environment=TMPDIR=/data
+
+# First invocation starts the daemon (it forks itself) and sets the
+# max number of simultaneous jobs. Tune the slot count here if desired.
+ExecStart=/usr/bin/ts -S 1
+ExecStop=/usr/bin/ts -K
+
+[Install]
+WantedBy=multi-user.target

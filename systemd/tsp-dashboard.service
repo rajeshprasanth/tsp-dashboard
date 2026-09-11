@@ -1,0 +1,41 @@
+[Unit]
+Description=tsp-dashboard (Task Spooler queue)
+Documentation=file:///opt/tsp-dashboard/README.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+
+# Dedicated runtime user (created by scripts/install_service.sh).
+User=tspd
+Group=tspd
+
+# Application is installed here by the installer script.
+WorkingDirectory=/opt/tsp-dashboard
+
+# Credentials + tuning. Edit /etc/tsp-dashboard.env after install.
+EnvironmentFile=/etc/tsp-dashboard.env
+# tsp socket + job output live in /data.
+Environment=TMPDIR=/data
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+ExecStart=/opt/tsp-dashboard/.venv/bin/gunicorn --config /opt/tsp-dashboard/gunicorn.conf.py wsgi:app
+ExecReload=/bin/kill -s HUP $MAINPID
+
+Restart=on-failure
+RestartSec=3
+
+# --- hardening -------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+# Only /data (tsp socket, job output, users.json) needs to be writable.
+ReadWritePaths=/data
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

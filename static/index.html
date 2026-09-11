@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tsp-dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+(function () {
+  var t = localStorage.getItem('tsp-theme');
+  if (t !== 'dark' && t !== 'light') {
+    t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ============================ LOGIN ============================ -->
+<div id="loginWrap" hidden>
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="mark">tsp</span>
+      <h1>tsp-dashboard</h1>
+    </div>
+    <p class="login-sub">Sign in to the queue dashboard. Access is role-based.</p>
+    <form id="loginForm">
+      <label for="u">Username</label>
+      <input id="u" name="username" autocomplete="username" autofocus spellcheck="false" required />
+      <label for="p">Password</label>
+      <input id="p" name="password" type="password" autocomplete="current-password" required />
+      <button type="submit" id="loginBtn" class="primary">Sign in</button>
+    </form>
+    <div id="loginErr" class="login-err" hidden></div>
+    <div class="login-foot">view-only role · admin role</div>
+  </div>
+</div>
+
+<!-- ============================ DASHBOARD ============================ -->
+<div id="dashWrap" hidden>
+  <div class="wrap">
+
+    <header class="top">
+      <div class="brand">
+        <span class="mark">tsp</span>
+        <div>
+          <h1>tsp-dashboard</h1>
+          <div class="bin" id="binPath">—</div>
+        </div>
+      </div>
+      <div class="head-right">
+        <span class="chip alive" id="serverChip"><span class="dot"></span><span id="serverChipText">checking…</span></span>
+        <span class="chip" title="Slots available"><span class="dot" style="background:var(--ink-faint)"></span>slots&nbsp;<b id="slotsTag" style="color:var(--ink)">—</b></span>
+        <span class="chip role-chip viewer" id="roleChip">—</span>
+        <button id="themeBtn" title="Toggle light/dark mode">☀ Light</button>
+        <button id="logoutBtn">Sign out</button>
+      </div>
+    </header>
+
+    <div id="serverBanner" hidden></div>
+
+    <!-- ---------- admin controls ---------- -->
+    <section class="admin-panel" id="adminPanel" hidden>
+      <div class="admin-head">
+        <span class="lbl">Server controls</span>
+        <span class="tag">admin only</span>
+      </div>
+      <div class="admin-grid">
+        <div class="ctl-card slots">
+          <div class="ctl-lbl">Max simultaneous slots <span class="cur" id="slotCur"></span></div>
+          <div class="ctl-row">
+            <input id="slotsInput" type="number" min="1" inputmode="numeric" placeholder="slots" />
+            <button id="slotsBtn" class="primary">Set slots</button>
+          </div>
+          <div class="hint">tsp -S &lt;num&gt; — raise to increase throughput</div>
+        </div>
+        <div class="ctl-card">
+          <div class="ctl-lbl">Running jobs</div>
+          <div class="ctl-row">
+            <span class="big"><span id="ctlRunning">0</span> <small>running</small></span>
+            <button class="danger" id="killAllBtn">Kill all</button>
+          </div>
+          <div class="hint">tsp -T — SIGTERM every running job group</div>
+        </div>
+        <div class="ctl-card">
+          <div class="ctl-lbl">Finished jobs</div>
+          <div class="ctl-row">
+            <span class="big"><span id="ctlFinished">0</span> <small>done</small></span>
+            <button id="clearBtn">Clear finished</button>
+          </div>
+          <div class="hint">tsp -C — drop finished jobs from the list</div>
+        </div>
+        <div class="ctl-card">
+          <div class="ctl-lbl">Task Spooler server</div>
+          <button class="danger" id="killServerBtn" style="width:100%">Kill server</button>
+          <div class="hint">tsp -K — <b>stops the daemon entirely.</b> Irreversible; jobs stop being accepted.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- overview ---------- -->
+    <div class="overview">
+      <div class="ov-ring-card">
+        <svg viewBox="0 0 150 150" id="utilRing">
+          <circle cx="75" cy="75" r="61" fill="none" stroke="var(--grid)" stroke-width="12"/>
+          <circle id="utilArc" cx="75" cy="75" r="61" fill="none" stroke="var(--accent)" stroke-width="12"
+                  stroke-linecap="round" transform="rotate(-90 75 75)"
+                  stroke-dasharray="383.3" stroke-dashoffset="383.3"/>
+          <text x="75" y="71" text-anchor="middle" id="ringNum" fill="var(--ink)"
+                font-family="var(--font-mono)" font-size="27" font-weight="600">0</text>
+          <text x="75" y="91" text-anchor="middle" id="ringDen" fill="var(--ink-faint)"
+                font-family="var(--font-mono)" font-size="12.5">/ 0</text>
+        </svg>
+        <div class="ring-lbl">slots busy</div>
+      </div>
+      <div class="ov-right">
+        <div class="ov-counts">
+          <div class="count-cell queued"><div class="num" id="statQueued">0</div><div class="lbl">Queued</div></div>
+          <div class="count-cell running"><div class="num" id="statRunning">0</div><div class="lbl">Running</div></div>
+          <div class="count-cell finished"><div class="num" id="statFinished">0</div><div class="lbl">Finished</div></div>
+          <div class="count-cell failed"><div class="num" id="statFailed">0</div><div class="lbl">Failed</div></div>
+        </div>
+        <div class="ov-trend">
+          <div class="ov-trend-head">
+            <span class="lbl">queue depth — this session</span>
+            <span class="legend">
+              <span><i style="background:var(--blue);"></i>queued</span>
+              <span><i style="background:var(--amber);"></i>running</span>
+            </span>
+          </div>
+          <svg viewBox="0 0 600 58" preserveAspectRatio="none" id="trendChart"></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- toolbar ---------- -->
+    <div class="toolbar">
+      <div class="chips" id="filterChips">
+        <div class="chip-btn active" data-filter="all">All</div>
+        <div class="chip-btn" data-filter="queued">Queued</div>
+        <div class="chip-btn" data-filter="running">Running</div>
+        <div class="chip-btn" data-filter="finished">Finished</div>
+        <div class="chip-btn" data-filter="failed">Failed</div>
+      </div>
+      <div class="toolbar-right">
+        <div class="poll-wrap">
+          <label for="pollSel">poll</label>
+          <select id="pollSel" title="Auto-refresh interval — applies to your browser session">
+            <option value="1000">1s</option>
+            <option value="2000">2s</option>
+            <option value="5000">5s</option>
+            <option value="10000">10s</option>
+            <option value="30000">30s</option>
+            <option value="60000">1m</option>
+          </select>
+        </div>
+        <div class="search-wrap">
+          <input class="search" id="searchBox" placeholder="filter by command…" spellcheck="false" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- jobs table ---------- -->
+    <div class="table-shell">
+      <div class="row-head">
+        <div>ID</div><div>State</div><div>Command</div><div>Exit</div><div>Time</div><div style="text-align:right;">Actions</div>
+      </div>
+      <div id="jobList"></div>
+    </div>
+
+    <footer>
+      polling every <span id="footPoll">2s</span> <span class="sep">·</span> GET /api/jobs
+      <span class="sep">·</span> <span id="footRole"></span>
+    </footer>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const HISTORY_MAX = 60;
+
+const state = {
+  user: null,
+  role: null,
+  jobs: [],
+  filter: 'all',
+  search: '',
+  expanded: new Set(),
+  auto: true,
+  timer: null,
+  pollMs: 2000,
+  slots: null,
+  alive: true,
+  binary: '',
+  history: [],           // {t, queued, running}
+};
+
+const $ = (sel) => document.querySelector(sel);
+
+function classify(job) {
+  if (job.state === 'finished') {
+    const ec = job.exit_code;
+    if (ec && ec !== '0') return 'failed';
+    return 'finished';
+  }
+  if (job.state === 'queued' || job.state === 'running') return job.state;
+  return 'other';
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function parseNum(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function api(path, opts = {}) {
+  const init = { ...opts };
+  if (opts.body) init.headers = { 'Content-Type': 'application/json' };
+  const res = await fetch(path, init);
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* empty body */ }
+  return { res, data };
+}
+
+// ------------------------------------------------------------------
+// theme
+// ------------------------------------------------------------------
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem('tsp-theme', t);
+  const btn = $('#themeBtn');
+  if (btn) btn.textContent = t === 'dark' ? '☀ Light' : '☾ Dark';
+}
+
+function themeInit() {
+  const t = document.documentElement.dataset.theme || 'dark';
+  setTheme(t);
+}
+
+// ------------------------------------------------------------------
+// toast
+// ------------------------------------------------------------------
+let toastTimer = null;
+function toast(msg, kind = 'info') {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (kind === 'error' ? 'error' : kind === 'ok' ? 'ok' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+// ------------------------------------------------------------------
+// session / login / logout
+// ------------------------------------------------------------------
+async function fetchMe() {
+  const { res, data } = await api('/api/me');
+  if (res.ok) {
+    state.user = data.user;
+    state.role = data.role;
+    applyRole();
+    $('#dashWrap').hidden = false;
+    $('#loginWrap').hidden = true;
+    return true;
+  }
+  $('#dashWrap').hidden = true;
+  $('#loginWrap').hidden = false;
+  return false;
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const btn = $('#loginBtn');
+  btn.disabled = true;
+  btn.classList.add('waiting');
+  btn.textContent = 'Signing in…';
+  const { res, data } = await api('/api/login', {
+    method: 'POST',
+    body: JSON.stringify({ username: $('#u').value.trim(), password: $('#p').value }),
+  });
+  if (res.ok) {
+    state.user = data.user;
+    state.role = data.role;
+    $('#loginErr').hidden = true;
+    $('#u').value = '';
+    $('#p').value = '';
+    applyRole();
+    $('#dashWrap').hidden = false;
+    $('#loginWrap').hidden = true;
+    startLoop();
+    return;
+  }
+  $('#loginErr').textContent = (data && data.error) || 'Login failed.';
+  $('#loginErr').hidden = false;
+  btn.disabled = false;
+  btn.classList.remove('waiting');
+  btn.textContent = 'Sign in';
+}
+
+async function doLogout() {
+  await api('/api/logout', { method: 'POST' });
+  state.user = null; state.role = null;
+  stopLoop();
+  $('#dashWrap').hidden = true;
+  $('#loginWrap').hidden = false;
+  $('#loginErr').hidden = true;
+}
+
+function applyRole() {
+  const admin = state.role === 'admin';
+  const chip = $('#roleChip');
+  chip.textContent = state.user || '—';
+  chip.className = 'chip role-chip ' + (admin ? 'admin' : 'viewer');
+  $('#adminPanel').hidden = !admin;
+  $('#slotsInput').disabled = !admin;
+  $('#footRole').textContent = admin ? 'authenticated as ' + state.user + ' (admin)' : 'view-only mode · ' + state.user;
+  renderJobs();
+}
+
+// ------------------------------------------------------------------
+// data fetching
+// ------------------------------------------------------------------
+async function fetchJobs() {
+  try {
+    const { res, data } = await api('/api/jobs');
+    if (res.ok) {
+      state.jobs = data.jobs || [];
+      state.slots = parseNum(data.slots);
+      state.binary = data.binary || '';
+      state.alive = true;
+      updateStats(data.counts || {});
+      recordHistory(data.counts || {});
+      markAlive(true, 'server up');
+    } else if (res.status === 503) {
+      state.jobs = [];
+      state.slots = null;
+      state.alive = false;
+      updateStats({ queued: 0, running: 0, finished: 0, failed: 0, other: 0 });
+      recordHistory({ queued: 0, running: 0, finished: 0, failed: 0, other: 0 });
+      markAlive(false, (data && data.error) || 'server not running');
+      renderError((data && data.error) || 'Task Spooler server is not running.');
+    } else {
+      state.alive = false;
+      markAlive(false, 'disconnected');
+      renderError((data && data.error) || 'Failed to reach backend');
+    }
+  } catch (e) {
+    state.alive = false;
+    markAlive(false, 'disconnected');
+    renderError('Could not reach the dashboard backend.');
+  }
+}
+
+function markAlive(alive, text) {
+  const chip = $('#serverChip');
+  chip.className = 'chip ' + (alive ? 'alive' : 'dead');
+  $('#serverChipText').textContent = text;
+  const banner = $('#serverBanner');
+  const bin = $('#binPath');
+  if (bin) bin.textContent = state.binary || '—';
+  const slotsTag = $('#slotsTag');
+  if (slotsTag) slotsTag.textContent = state.slots == null ? '—' : state.slots;
+  if (!alive) {
+    banner.hidden = false;
+    banner.innerHTML = '⚠ &nbsp;Task Spooler server is <b>not running</b> — jobs cannot be listed or managed. Restart it on the host or via your scheduler (e.g. <code>tsp -S 2</code>).';
+  } else {
+    banner.hidden = true;
+  }
+}
+
+function updateStats(counts) {
+  $('#statQueued').textContent = counts.queued;
+  $('#statRunning').textContent = counts.running;
+  $('#statFinished').textContent = counts.finished;
+  $('#statFailed').textContent = counts.failed;
+  if ($('#ctlRunning')) $('#ctlRunning').textContent = counts.running;
+  if ($('#ctlFinished')) $('#ctlFinished').textContent = counts.finished;
+  if ($('#slotsTag')) $('#slotsTag').textContent = state.slots == null ? '—' : state.slots;
+  renderRing(counts.running);
+}
+
+function renderRing(running) {
+  const CIRC = 383.3; // 2 * PI * 61
+  const denom = state.slots && state.slots > 0 ? state.slots : Math.max(running, 1);
+  const frac = Math.min(running / denom, 1);
+  const arc = $('#utilArc');
+  arc.setAttribute('stroke-dasharray', CIRC.toFixed(1));
+  arc.setAttribute('stroke-dashoffset', (CIRC * (1 - frac)).toFixed(1));
+  arc.setAttribute('stroke', running > 0 ? 'var(--amber)' : 'var(--accent)');
+  $('#ringNum').textContent = running;
+  $('#ringDen').textContent = '/ ' + (state.slots ?? '?');
+}
+
+function recordHistory(counts) {
+  state.history.push({ t: Date.now(), queued: counts.queued, running: counts.running });
+  if (state.history.length > HISTORY_MAX) state.history.shift();
+  renderTrend();
+}
+
+function renderTrend() {
+  const svg = $('#trendChart');
+  const w = 600, h = 58, pad = 4;
+  const pts = state.history;
+  if (pts.length < 2) {
+    svg.innerHTML = `<text x="8" y="34" fill="var(--ink-faint)" font-family="var(--font-mono)" font-size="11">gathering data…</text>`;
+    return;
+  }
+  const maxV = Math.max(1, ...pts.map(p => Math.max(p.queued, p.running)));
+  const stepX = (w - pad * 2) / (HISTORY_MAX - 1);
+  const startIdx = HISTORY_MAX - pts.length;
+  const xFor = (i) => pad + (startIdx + i) * stepX;
+  const yFor = (v) => h - pad - (v / maxV) * (h - pad * 2);
+  const line = (key) => pts.map((p, i) => `${xFor(i).toFixed(1)},${yFor(p[key]).toFixed(1)}`).join(' ');
+  svg.innerHTML = `
+    <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="var(--grid)" stroke-width="1"/>
+    <polyline points="${line('queued')}" fill="none" stroke="var(--blue)" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="${line('running')}" fill="none" stroke="var(--amber)" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
+  `;
+}
+
+function renderError(msg) {
+  const list = $('#jobList');
+  list.innerHTML = `
+    <div class="error-state">
+      <div class="icon">connection error</div>
+      <div>${escapeHtml(msg)}</div>
+      <div style="margin-top:8px; font-size:11.5px; color:var(--ink-faint);">
+        Make sure the server is running and <code>tsp</code> is reachable.
+      </div>
+    </div>`;
+}
+
+// ------------------------------------------------------------------
+// job rows
+// ------------------------------------------------------------------
+function renderJobs() {
+  let jobs = state.jobs.filter(j => {
+    const cls = classify(j);
+    if (state.filter !== 'all' && cls !== state.filter) return false;
+    if (state.search && !j.command.toLowerCase().includes(state.search.toLowerCase())) return false;
+    return true;
+  });
+
+  const list = $('#jobList');
+  if (jobs.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">empty</div>No jobs match this view.</div>`;
+    return;
+  }
+
+  const queuedOrder = state.jobs.filter(j => j.state === 'queued').map(j => j.id);
+  const prevMap = {};
+  queuedOrder.forEach((id, i) => { if (i > 0) prevMap[id] = queuedOrder[i - 1]; });
+
+  list.innerHTML = jobs.map(j => jobRowHtml(j, prevMap[j.id])).join('');
+
+  jobs.forEach(j => {
+    const rowEl = document.getElementById('row-' + j.id);
+    if (!rowEl) return;
+    rowEl.querySelector('.job-row').addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      toggleExpand(j.id);
+    });
+    const qs = (sel) => rowEl.querySelector(sel);
+    if (qs('[data-act="view"]')) qs('[data-act="view"]').addEventListener('click', (e) => { e.stopPropagation(); toggleExpand(j.id); });
+    if (qs('[data-act="kill"]')) qs('[data-act="kill"]').addEventListener('click', (e) => { e.stopPropagation(); cancelJob(j.id, 'kill'); });
+    if (qs('[data-act="remove"]')) qs('[data-act="remove"]').addEventListener('click', (e) => { e.stopPropagation(); cancelJob(j.id, 'remove'); });
+    if (qs('[data-act="bump"]')) qs('[data-act="bump"]').addEventListener('click', (e) => { e.stopPropagation(); bumpJob(j.id); });
+    if (qs('[data-act="up"]')) qs('[data-act="up"]').addEventListener('click', (e) => { e.stopPropagation(); swapUp(j.id, prevMap[j.id]); });
+  });
+
+  state.expanded.forEach(id => {
+    const el = document.getElementById('row-' + id);
+    if (el) loadDrawer(id);
+  });
+}
+
+function jobRowHtml(j, prevId) {
+  const cls = classify(j);
+  const admin = state.role === 'admin';
+  const isExpanded = state.expanded.has(j.id);
+  const exitClass = (j.exit_code && j.exit_code !== '0') ? 'nonzero' : '';
+  const labelBadge = j.label ? `<span class="label-pill">${escapeHtml(j.label)}</span>` : '';
+
+  let actions = '';
+  if (admin && j.state === 'queued') {
+    actions += `<button class="act-btn icon" data-act="up" ${prevId ? '' : 'disabled'} title="Swap up in queue (tsp -U)">↑</button>`;
+    actions += `<button class="act-btn icon accent" data-act="bump" title="Move to front of queue (tsp -u)">⤒</button>`;
+  }
+  actions += `<button class="act-btn" data-act="view">Output</button>`;
+  if (admin) {
+    if (j.state === 'running') {
+      actions += `<button class="act-btn danger" data-act="kill" title="SIGTERM (tsp -k)">Kill</button>`;
+    } else if (j.state === 'queued' || cls === 'finished' || cls === 'failed') {
+      actions += `<button class="act-btn danger" data-act="remove" title="Remove from list (tsp -r)">Remove</button>`;
+    }
+  }
+
+  return `
+    <div class="job state-${cls} ${isExpanded ? 'expanded' : ''}" id="row-${j.id}">
+      <div class="job-row">
+        <div class="id-cell">#${escapeHtml(j.id)}</div>
+        <div><span class="badge ${cls}"><span class="dot"></span>${cls}</span></div>
+        <div class="cmd-cell" title="${escapeHtml(j.command)}">${labelBadge}${escapeHtml(j.command) || '<em>—</em>'}</div>
+        <div class="exit-cell ${exitClass}">${escapeHtml(j.exit_code) || '—'}</div>
+        <div class="times-cell">${escapeHtml(j.times) || '—'}</div>
+        <div class="actions-cell">${actions}</div>
+      </div>
+      <div class="drawer" id="drawer-${j.id}">
+        <div class="drawer-section" id="info-${j.id}">
+          <div class="drawer-section-label">job info</div>
+          <div class="empty-out">loading…</div>
+        </div>
+        <div class="drawer-section" id="outsec-${j.id}">
+          <div class="drawer-section-label">output — ${escapeHtml(j.output_file) || 'no output file yet'}</div>
+          <div class="empty-out">loading…</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleExpand(id) {
+  if (state.expanded.has(id)) {
+    state.expanded.delete(id);
+  } else {
+    state.expanded.add(id);
+    loadDrawer(id);
+  }
+  const rowEl = document.getElementById('row-' + id);
+  if (rowEl) rowEl.classList.toggle('expanded');
+}
+
+const INFO_FIELDS = [
+  ['command', 'Command'],
+  ['slots_required', 'Slots required'],
+  ['enqueue_time', 'Enqueue time'],
+  ['start_time', 'Start time'],
+  ['time_running', 'Time running'],
+  ['end_time', 'End time'],
+  ['time_run', 'Time run'],
+  ['result', 'Result'],
+];
+
+function loadDrawer(id) {
+  loadInfo(id);
+  loadOutput(id);
+}
+
+async function loadInfo(id) {
+  const sec = document.getElementById('info-' + id);
+  if (!sec) return;
+  try {
+    const { res, data } = await api(`/api/jobs/${id}/info`);
+    if (!res.ok) {
+      sec.innerHTML = `<div class="drawer-section-label">job info</div><div class="empty-out">${escapeHtml((data && data.error) || 'no info available')}</div>`;
+      return;
+    }
+    const seen = new Set();
+    let rows = INFO_FIELDS
+      .filter(([key]) => data[key] !== undefined && data[key] !== '')
+      .map(([key, label]) => {
+        seen.add(key);
+        const isCmd = key === 'command';
+        const isRunning = key === 'time_running';
+        return `<div class="k">${escapeHtml(label)}</div><div class="v ${isCmd ? 'cmd' : ''} ${isRunning ? 'running' : ''}">${escapeHtml(data[key])}</div>`;
+      }).join('');
+    (data.fields || []).forEach(f => {
+      const key = f.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      if (seen.has(key) || !f.value) return;
+      seen.add(key);
+      rows += `<div class="k">${escapeHtml(f.label)}</div><div class="v">${escapeHtml(f.value)}</div>`;
+    });
+    if (!rows) {
+      sec.innerHTML = `<div class="drawer-section-label">job info</div><div class="empty-out">no info available</div>`;
+      return;
+    }
+    sec.innerHTML = `<div class="drawer-section-label">job info</div><div class="info-grid">${rows}</div>`;
+  } catch (e) {
+    sec.innerHTML = `<div class="drawer-section-label">job info</div><div class="empty-out">failed to load job info</div>`;
+  }
+}
+
+async function loadOutput(id) {
+  const sec = document.getElementById('outsec-' + id);
+  if (!sec) return;
+  try {
+    const { res, data } = await api(`/api/jobs/${id}/output`);
+    if (!res.ok) {
+      sec.innerHTML = `<div class="drawer-section-label">output</div><div class="empty-out">${escapeHtml((data && data.error) || 'no output yet')}</div>`;
+      return;
+    }
+    const body = data.output && data.output.trim().length
+      ? `<pre class="output">${escapeHtml(data.output)}</pre>${data.truncated ? '<div class="empty-out" style="margin-top:6px;">(truncated — showing tail)</div>' : ''}`
+      : `<div class="empty-out">no output yet</div>`;
+    sec.innerHTML = `<div class="drawer-section-label">output</div>${body}`;
+  } catch (e) {
+    sec.innerHTML = `<div class="drawer-section-label">output</div><div class="empty-out">failed to load output</div>`;
+  }
+}
+
+// ------------------------------------------------------------------
+// admin actions
+// ------------------------------------------------------------------
+async function cancelJob(id, action) {
+  const verb = action === 'kill' ? 'kill' : 'remove';
+  if (!confirm(`Are you sure you want to ${verb} job #${id}?`)) return;
+  try {
+    const { res, data } = await api(`/api/jobs/${id}/cancel`, { method: 'POST', body: JSON.stringify({ action }) });
+    if (!res.ok) { toast((data && data.error) || `Could not ${verb} job.`, 'error'); return; }
+    toast(`Job #${id} ${verb}d.`, 'ok');
+    fetchJobs();
+  } catch (e) {
+    toast(`Could not ${verb} job.`, 'error');
+  }
+}
+
+async function bumpJob(id) {
+  try {
+    const { res, data } = await api(`/api/jobs/${id}/bump`, { method: 'POST' });
+    if (!res.ok) { toast((data && data.error) || 'Could not bump job.', 'error'); return; }
+    toast(`Job #${id} moved to the front of the queue.`, 'ok');
+    fetchJobs();
+  } catch (e) {
+    toast('Could not bump job.', 'error');
+  }
+}
+
+async function swapUp(id, prevId) {
+  if (!prevId) return;
+  try {
+    const { res, data } = await api('/api/jobs/swap', { method: 'POST', body: JSON.stringify({ a: id, b: prevId }) });
+    if (!res.ok) { toast((data && data.error) || 'Could not reorder the queue.', 'error'); return; }
+    fetchJobs();
+  } catch (e) {
+    toast('Could not reorder the queue.', 'error');
+  }
+}
+
+async function setSlots() {
+  const input = $('#slotsInput');
+  const num = parseInt(input.value, 10);
+  if (!Number.isFinite(num) || num < 1) { toast('Slots must be a positive integer.', 'error'); input.value = state.slots ?? ''; return; }
+  if (num === state.slots) { input.value = state.slots; return; }
+  const btn = $('#slotsBtn');
+  btn.disabled = true;
+  try {
+    const { res, data } = await api('/api/slots', { method: 'POST', body: JSON.stringify({ slots: num }) });
+    if (!res.ok) { toast((data && data.error) || 'Could not change slot count.', 'error'); return; }
+    state.slots = parseNum(data.slots) ?? num;
+    $('#slotsTag').textContent = state.slots;
+    $('#slotCur').textContent = '→ ' + state.slots;
+    input.value = state.slots;
+    toast(`Slots set to ${state.slots}.`, 'ok');
+    renderRing(parseInt($('#statRunning').textContent, 10) || 0);
+  } catch (e) {
+    toast('Could not change slot count.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function killAll() {
+  if (!confirm('Send SIGTERM to EVERY running job group? This stops all running jobs at once.')) return;
+  try {
+    const { res, data } = await api('/api/kill-all', { method: 'POST' });
+    if (!res.ok) { toast((data && data.error) || 'Could not kill running jobs.', 'error'); return; }
+    toast('All running jobs killed.', 'ok');
+    fetchJobs();
+  } catch (e) {
+    toast('Could not kill running jobs.', 'error');
+  }
+}
+
+async function clearFinished() {
+  if (!confirm('Clear all finished jobs from the list?')) return;
+  try {
+    const { res, data } = await api('/api/clear', { method: 'POST' });
+    if (!res.ok) { toast((data && data.error) || 'Could not clear finished jobs.', 'error'); return; }
+    toast('Finished jobs cleared.', 'ok');
+    fetchJobs();
+  } catch (e) {
+    toast('Could not clear finished jobs.', 'error');
+  }
+}
+
+async function killServer() {
+  if (!confirm('This kills the Task Spooler SERVER itself (tsp -K). No more jobs can be accepted until it is restarted. Continue?')) return;
+  const typed = prompt('Type KILL (in caps) to confirm you really want to stop the server:');
+  if (typed !== 'KILL') { toast('Server kill aborted.', 'error'); return; }
+  try {
+    const { res, data } = await api('/api/server/kill', { method: 'POST' });
+    if (!res.ok) { toast((data && data.error) || 'Could not kill the server.', 'error'); return; }
+    toast('Task Spooler server stopped.', 'ok');
+    fetchJobs();
+  } catch (e) {
+    toast('Could not kill the server.', 'error');
+  }
+}
+
+// ------------------------------------------------------------------
+// loop / init
+// ------------------------------------------------------------------
+function startLoop() {
+  fetchJobs();
+  if (!state.timer) {
+    state.timer = setInterval(() => { if (state.auto) fetchJobs(); }, state.pollMs);
+    syncPollUi();
+  }
+}
+
+function stopLoop() {
+  if (state.timer) { clearInterval(state.timer); state.timer = null; }
+}
+
+function formatPoll(ms) {
+  return ms >= 60000 ? (ms / 60000) + 'm' : (ms / 1000) + 's';
+}
+
+function applyPoll(ms) {
+  state.pollMs = ms;
+  localStorage.setItem('tsp-poll', String(ms));
+  stopLoop();
+  state.timer = setInterval(() => { if (state.auto) fetchJobs(); }, ms);
+  syncPollUi();
+}
+
+function syncPollUi() {
+  const sel = $('#pollSel');
+  if (sel) {
+    const known = Array.from(sel.options).some(o => o.value === String(state.pollMs));
+    if (!known) {
+      const opt = document.createElement('option');
+      opt.value = String(state.pollMs);
+      opt.textContent = formatPoll(state.pollMs);
+      sel.appendChild(opt);
+    }
+    sel.value = String(state.pollMs);
+  }
+  $('#footPoll').textContent = formatPoll(state.pollMs);
+}
+
+// events
+function bindEvents() {
+  $('#loginForm').addEventListener('submit', doLogin);
+  $('#logoutBtn').addEventListener('click', doLogout);
+  $('#themeBtn').addEventListener('click', () => {
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
+  $('#slotsBtn').addEventListener('click', setSlots);
+  $('#slotsInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') setSlots(); });
+  $('#killAllBtn').addEventListener('click', killAll);
+  $('#clearBtn').addEventListener('click', clearFinished);
+  $('#killServerBtn').addEventListener('click', killServer);
+
+  $('#filterChips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip-btn');
+    if (!chip) return;
+    document.querySelectorAll('.chip-btn').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    state.filter = chip.dataset.filter;
+    renderJobs();
+  });
+
+  $('#searchBox').addEventListener('input', (e) => {
+    state.search = e.target.value;
+    renderJobs();
+  });
+
+  $('#pollSel').addEventListener('change', (e) => {
+    applyPoll(parseInt(e.target.value, 10) || 2000);
+  });
+}
+
+(async function init() {
+  themeInit();
+  const savedPoll = parseInt(localStorage.getItem('tsp-poll') || '', 10);
+  if (Number.isFinite(savedPoll) && savedPoll >= 1000) state.pollMs = savedPoll;
+  bindEvents();
+  await fetchMe();
+  if (state.user) startLoop();
+})();
+</script>
+</body>
+</html>

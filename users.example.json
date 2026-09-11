@@ -1,0 +1,11 @@
+{
+  "_comment": "Template. Generate real users with: python3 manage.py add-user --username NAME --role admin --force",
+  "admin": {
+    "role": "admin",
+    "password": "pbkdf2:sha256:600000:REPLACE_WITH_REAL_HASH"
+  },
+  "viewer": {
+    "role": "viewer",
+    "password": "pbkdf2:sha256:600000:REPLACE_WITH_REAL_HASH"
+  }
+}

@@ -5,7 +5,7 @@
   <img src="images/logo-light.svg" alt="tsp-dashboard logo (light theme)" width="380" />
 </p>
 
-A production-grade web dashboard for [Task Spooler](https://viric.name/cgi-bin/ts)
+A production-grade web dashboard for [Task Spooler](https://github.com/justanhduc/task-spooler)
 (`tsp` / `ts`), the Unix task queue. It wraps the `tsp` CLI behind a small,
 role-aware REST API and serves a responsive single-page frontend with
 **dark/light** themes and **role-based access** (admin vs. view-only).
@@ -185,12 +185,35 @@ python3 run.py
 Tests use `tests/fake_tsp.py`, a small in-memory emulator of the `tsp`
 CLI (selected via `TSP_BIN`), so nothing real is touched.
 
+### Documentation (MkDocs)
+
+The project ships an [MkDocs](https://www.mkdocs.org/) site (built with the
+[Material theme](https://squidfunk.github.io/mkdocs-material/)) under
+`docs/`. Once deployed it is published at
+**https://rajeshprasanth.github.io/tsp-dashboard/**:
+
+```bash
+pip install -r requirements-dev.txt
+mkdocs serve      # live preview → http://127.0.0.1:8000
+mkdocs build      # static site → site/
+mkdocs gh-deploy  # publish to GitHub Pages (enable Pages in repo settings first)
+```
+
+Screenshots and the dark/light logos are copied into `docs/assets/` so the
+published site is self-contained.
+
 ### Layout
 
 ```
 images/
   logo-dark.svg         # official application logo (dark theme)
   logo-light.svg        # official application logo (light theme)
+docs/                   # MkDocs project site
+  index.md              # overview, features, screenshots, quick start
+  api.md                # API reference
+  development.md        # dev workflow, layout, docs build
+  deployment.md         # config + deployment notes
+mkdocs.yml              # MkDocs configuration (Material theme)
 app/
   __init__.py   # Flask app factory, security headers
   config.py     # env-driven configuration

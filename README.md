@@ -1,7 +1,8 @@
 # tsp-dashboard
 
 <p align="center">
-  <img src="images/logo-dark.svg" alt="tsp-dashboard logo" width="420" />
+  <img src="images/logo-dark.svg" alt="tsp-dashboard logo (dark theme)" width="380" />
+  <img src="images/logo-light.svg" alt="tsp-dashboard logo (light theme)" width="380" />
 </p>
 
 A production-grade web dashboard for [Task Spooler](https://viric.name/cgi-bin/ts)
@@ -42,14 +43,13 @@ role-aware REST API and serves a responsive single-page frontend with
 
 ## Screenshots
 
-Drop your captures into a `screenshots/` directory and update the paths
-below to match your filenames:
+![Login — dark theme](screenshots/login-dark.png)
 
-![Login](screenshots/login.png)
+![Login — light theme](screenshots/login-light.png)
 
-![Dashboard — dark theme](screenshots/dashboard-dark.png)
+![Dashboard — dark theme](screenshots/app-dark.png)
 
-![Dashboard — light theme](screenshots/dashboard-light.png)
+![Dashboard — light theme](screenshots/app-light.png)
 
 ---
 

@@ -12,7 +12,7 @@ role-aware REST API and serves a responsive single-page frontend with
 ## Features
 
 - **Role-based login**
-  - `admin` — full access: view jobs **and** run every control action.
+  - `admin` — full access: view jobs **and** run every control action. 
   - `viewer` — read-only: list jobs, open job info / output, see server state. Every mutating endpoint returns `403`.
 - **Dashboard** — live-updating job table, state badges, exit codes, drawer with full `tsp -i` info and `tsp -c` output, queue-depth trend chart, slot-usage ring.
 - **Dark & light themes** — manual toggle (persisted) and automatic `prefers-color-scheme` detection.
